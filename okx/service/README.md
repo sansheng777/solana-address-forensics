@@ -114,9 +114,9 @@ can assemble the parameters, but without repeating them on `pay` the replay carr
 
 | Item | Amount | Notes |
 |---|---|---|
-| Dune | 2-61 credits (varies by launchpad and by how active the address is; dbc is the most expensive). **Measured in production 2026-09-22: 60.87 credits** for a 2-day cold window on a busy pump.fun address | cached per (address, window) in the `okx_data` volume; the second call costs nothing |
+| Dune | **Measured in production 2026-09-22 on one busy pump.fun address: 60.9 credits for a 2-day cold window, 127.7 for a 5-day one.** Roughly linear in the window, and higher again on dbc. A 4,000-credit month is therefore 30-60 cold calls | cached per (address, window) in the `okx_data` volume; the second call costs nothing |
 | Model | ≈ $0.01 (first draft + 2-3 targeted rewrites) | the report is cached at `okx/data/_svc/<key>.json`; the second call returns `cached: true` |
-| Time | 90-450 s | longest on a Dune cache miss plus three rewrites; the proxy and the x402 timeout are both set to 900 s |
+| Time | **Measured: 378 s for a 2-day cold window, 653 s for a 5-day one**; ~0.02 s cached | dominated by the Dune queries; the proxy and the x402 timeout are both set to 900 s, which a 7-day window could approach |
 
 Every paid call appends one line to `okx/data/_svc/calls.jsonl` — address, window, outcome, Dune
 credits, model dollars, seconds, whether verification passed. Each report also carries its own

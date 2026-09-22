@@ -139,9 +139,9 @@ deployment additionally needs OKX x402 seller credentials. See
 
 | | |
 |---|---|
-| Dune | 2-61 credits for a cold address (measured 60.87 in production on a busy address, 2 days), cached per (address, window) |
+| Dune | measured in production on one busy address: 60.9 credits for a 2-day cold window, 127.7 for a 5-day one; cached per (address, window) |
 | Model | ≈ $0.01 — `deepseek/deepseek-v4-flash`, one draft plus targeted rewrites |
-| Time | 90-450 s cold, ~0.02 s cached |
+| Time | measured 378 s (2-day window) and 653 s (5-day) cold, ~0.02 s cached |
 
 The service is built for being left running: a fixed worker pool (jobs above the limit queue rather
 than starting), every Dune round trip serialised because one scratch query serves them all, a bounded
