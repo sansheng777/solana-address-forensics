@@ -168,6 +168,26 @@ async def _on_error(request: Request, exc: Exception):
 
 
 
+@app.get("/")
+async def index():
+    """Free. ★ Added 2026-09-22: the bare domain used to answer FastAPI's default
+    {"detail":"Not Found"}, which is what a judge, a marketplace crawler or a curious caller sees
+    first. A service that cannot say what it is at its own root looks broken."""
+    return {"service": SERVICE_DESC,
+            "docs": "https://github.com/sansheng777/solana-address-forensics",
+            "price_per_call": PRICE, "network": NETWORK, "chain": "solana",
+            "routes": {
+                "GET /": "this page",
+                "GET /health": "liveness, including a real ping of the x402 facilitator",
+                "GET /spec": "parameter schema and the shape of the report",
+                "POST /profile": "the paid call (x402); see /spec for parameters",
+                "GET /report/{token}": "free pickup for a report a paid call started"},
+            "example": ("onchainos payment quote %s/profile --method POST "
+                        "--param address=<solana address> --param days=2"
+                        % (PUBLIC_URL or "https://<this host>")),
+            "note": "Read-only. This service never trades and never signs anything."}
+
+
 @app.get("/health")
 async def health():
     """Free. ★ It really pings the facilitator — a credential mismatch has to be visible here, not

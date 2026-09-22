@@ -7,6 +7,7 @@ request gets a 200.
 
 | Route | Paid | What it does |
 |---|---|---|
+| `GET /` | free | What this service is, its routes and its price — the bare domain used to answer `{"detail":"Not Found"}` |
 | `GET /health` | free | Is it alive? **It really pings the facilitator**, so a credential mismatch shows up here |
 | `GET /spec` | free | Parameter schema + `report_shape`, for registration and for callers |
 | `POST /profile` | **x402** | `{"address", "days" (1-7, default 2), "end" (YYYY-MM-DD, default yesterday)}` |
