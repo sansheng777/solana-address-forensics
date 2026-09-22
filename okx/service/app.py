@@ -45,7 +45,7 @@ for p in (os.path.join(ROOT, "okx", "engine"), os.path.join(ROOT, "okx", "agent"
     if p not in sys.path: sys.path.insert(0, p)
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
 from x402.http import (OKXAuthConfig, OKXFacilitatorClient, OKXFacilitatorConfig, PaymentOption)
 from x402.http.middleware.fastapi import PaymentMiddlewareASGI
 from x402.http.types import RouteConfig, HTTPResponseBody
@@ -251,11 +251,80 @@ async def _on_error(request: Request, exc: Exception):
 
 
 
+# ★ A browser opening the bare domain used to get the same JSON an agent gets, which reads as an
+#   unfinished API rather than a product. The JSON stays for every machine caller; a request that
+#   asks for HTML gets a page instead. Self-contained: no external stylesheet, no script, no font.
+PAGE = """<!doctype html><html lang="en"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Onchain Address Forensics</title>
+<style>
+ :root{color-scheme:dark}
+ body{margin:0;background:#12141c;color:#d7dae3;font:15px/1.65 ui-monospace,SFMono-Regular,Menlo,monospace}
+ .w{max-width:820px;margin:0 auto;padding:48px 20px 80px}
+ h1{font-size:25px;margin:0 0 6px;color:#fff;letter-spacing:-.3px}
+ .sub{color:#8b93a7;margin:0 0 28px}
+ .tag{display:inline-block;border:1px solid #2c3142;border-radius:3px;padding:2px 8px;margin:0 6px 6px 0;color:#9aa3b8;font-size:12px}
+ .live{border-color:#1f5f3f;color:#53d08a}
+ h2{font-size:13px;text-transform:uppercase;letter-spacing:.12em;color:#6f7789;margin:34px 0 10px;font-weight:600}
+ pre{background:#0c0e15;border:1px solid #212534;border-radius:6px;padding:13px 15px;overflow-x:auto;margin:0 0 12px;font-size:13.5px}
+ code{color:#8fd6a8}
+ table{border-collapse:collapse;width:100%;font-size:13.5px}
+ td{border-top:1px solid #212534;padding:7px 10px 7px 0;vertical-align:top}
+ td:first-child{color:#8fd6a8;white-space:nowrap;width:1%;padding-right:20px}
+ a{color:#7aa2f7}
+ .q{border-left:2px solid #2c3142;padding:2px 0 2px 14px;margin:0 0 14px;color:#b9c0d0}
+ .q b{color:#fff;font-weight:600}
+ footer{margin-top:40px;color:#6f7789;font-size:13px}
+</style>
+<div class="w">
+<h1>Onchain Address Forensics</h1>
+<p class="sub">One Solana address in &rarr; a cited, machine-verified trading profile out.</p>
+<span class="tag live">live</span><span class="tag">$0.10 per call</span><span class="tag">x402 &middot; X Layer (eip155:196)</span><span class="tag">read-only, never trades</span>
+
+<h2>What you get back</h2>
+<div class="q"><b>profile</b> &mdash; what the address does: hold times, how it exits, where on the bonding curve it enters.</div>
+<div class="q"><b>result</b> &mdash; whether it makes money: win rate with its denominator, net PnL, concentration, trend.</div>
+<div class="q"><b>edge</b> &mdash; execution or coin selection, and <i>whether a follower could actually get it</i>.</div>
+<p>Every number in the report resolves to one row of the tables returned with it, and 13 mechanical
+checks reject arithmetic, invented sources and vague wording before the report is handed over.</p>
+
+<h2>Try it, free</h2>
+<pre><code>curl -s https://agent.stochedge.com/spec
+curl -s "https://agent.stochedge.com/health?deep=1"</code></pre>
+
+<h2>Buy one</h2>
+<pre><code>onchainos payment quote https://agent.stochedge.com/profile --method POST \
+    --param address=&lt;solana address&gt; --param days=2
+onchainos payment pay --payment-id &lt;id&gt; --param address=&lt;solana address&gt; --param days=2 --yes</code></pre>
+<p>An unpaid POST answers <code>402</code> with the challenge; the signed replay answers <code>200</code>.
+A cold address takes minutes, so a paid call hands back a pickup token and
+<code>GET /report/{token}</code> collects it for free.</p>
+
+<h2>Routes</h2>
+<table>
+<tr><td>GET /</td><td>this page (JSON for machines)</td></tr>
+<tr><td>GET /health</td><td>liveness; <code>?deep=1</code> probes the data and model vendors</td></tr>
+<tr><td>GET /spec</td><td>parameter schema and the shape of the report</td></tr>
+<tr><td>POST /profile</td><td><b>paid</b> &mdash; address, days (1-7), end (YYYY-MM-DD)</td></tr>
+<tr><td>GET /report/{token}</td><td>free pickup for a report a paid call started</td></tr>
+</table>
+
+<footer>
+Source: <a href="https://github.com/sansheng777/solana-address-forensics">github.com/sansheng777/solana-address-forensics</a> (MIT)
+&middot; Listed on <a href="https://www.okx.ai/agents/13839">OKX.AI</a> as ASP agent-id 13839
+</footer>
+</div>
+"""
+
+
 @app.get("/")
-async def index():
+async def index(request: Request):
     """Free. ★ Added 2026-09-22: the bare domain used to answer FastAPI's default
     {"detail":"Not Found"}, which is what a judge, a marketplace crawler or a curious caller sees
-    first. A service that cannot say what it is at its own root looks broken."""
+    first. A service that cannot say what it is at its own root looks broken.
+    ★ 2026-09-22: a browser gets the page, everything else gets the JSON below unchanged."""
+    if "text/html" in (request.headers.get("accept") or ""):
+        return HTMLResponse(PAGE)
     return {"service": SERVICE_DESC,
             "docs": "https://github.com/sansheng777/solana-address-forensics",
             "price_per_call": PRICE, "network": NETWORK, "chain": "solana",
