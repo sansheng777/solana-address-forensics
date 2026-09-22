@@ -114,7 +114,7 @@ can assemble the parameters, but without repeating them on `pay` the replay carr
 
 | Item | Amount | Notes |
 |---|---|---|
-| Dune | 2-50 credits (varies by launchpad; dbc is the most expensive) | cached per (address, window) in the `okx_data` volume; the second call costs nothing |
+| Dune | 2-61 credits (varies by launchpad and by how active the address is; dbc is the most expensive). **Measured in production 2026-09-22: 60.87 credits** for a 2-day cold window on a busy pump.fun address | cached per (address, window) in the `okx_data` volume; the second call costs nothing |
 | Model | ≈ $0.01 (first draft + 2-3 targeted rewrites) | the report is cached at `okx/data/_svc/<key>.json`; the second call returns `cached: true` |
 | Time | 90-450 s | longest on a Dune cache miss plus three rewrites; the proxy and the x402 timeout are both set to 900 s |
 

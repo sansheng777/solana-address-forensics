@@ -139,7 +139,7 @@ deployment additionally needs OKX x402 seller credentials. See
 
 | | |
 |---|---|
-| Dune | 2-50 credits for a cold address, cached per (address, window) |
+| Dune | 2-61 credits for a cold address (measured 60.87 in production on a busy address, 2 days), cached per (address, window) |
 | Model | ≈ $0.01 — `deepseek/deepseek-v4-flash`, one draft plus targeted rewrites |
 | Time | 90-450 s cold, ~0.02 s cached |
 
