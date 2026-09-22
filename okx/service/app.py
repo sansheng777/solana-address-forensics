@@ -203,6 +203,28 @@ def _rate_ok(ip):
 
 @app.middleware("http")
 async def _throttle(request: Request, call_next):
+    if request.method == "POST" and request.url.path.rstrip("/") == "/profile":
+        # ★ Validate **before** the payment middleware issues the 402 challenge (OKX listing review,
+        #   2026-09-22). The body has to be read here and replayed downstream, because the payment
+        #   middleware is an ASGI app reading the raw receive channel — consuming it without putting
+        #   it back would hang the request.
+        raw = await request.body()
+        async def _replay():
+            return {"type": "http.request", "body": raw, "more_body": False}
+        request._receive = _replay
+        try:
+            parsed = json.loads(raw or b"{}")
+        except Exception:
+            return _bad("body must be valid JSON")
+        if not isinstance(parsed, dict):
+            return _bad("body must be a JSON object")
+        merged = _merge(parsed, dict(request.query_params))
+        print("[probe] POST /profile paid=%s params=%s"
+              % (bool(request.headers.get("payment-signature") or request.headers.get("x-payment")),
+                 json.dumps(merged, ensure_ascii=False)[:200]), flush=True)
+        vals, err = _parse(merged)
+        if err:
+            return err               # 400 before any challenge — nobody pays for a doomed request
     if request.method != "POST":
         # Behind Caddy the peer is the proxy, so the client is the first hop in X-Forwarded-For.
         ip = (request.headers.get("x-forwarded-for", "").split(",")[0].strip()
@@ -362,6 +384,43 @@ def _shift(d, n):
 
 def _bad(msg, **extra):
     return JSONResponse(status_code=400, content=dict(error=msg, parameters=PARAMS, **extra))
+
+
+def _merge(body, q):
+    """Body wins, query string fills the gaps — a buyer may put parameters in either."""
+    if not isinstance(body, dict): body = {}
+    return {k: (body.get(k) if body.get(k) not in (None, "") else q.get(k))
+            for k in set(body) | set(q)}
+
+
+def _parse(p):
+    """Validate the parameters. Returns (values, None) or (None, a 400 response).
+
+    ‼️ This runs **before the 402 challenge is issued** (see the middleware). The OKX listing review
+       rejected the service on 2026-09-22 for exactly this: "参数缺失或错误" was only reported after
+       the buyer had signed and been charged. Nobody should pay for a request that cannot succeed,
+       so the same function now guards both sides of the payment.
+    """
+    addr = str(p.get("address") or "").strip()
+    if not addr:
+        return None, _bad("address is required: a base58 Solana address (32-44 chars)")
+    if not B58.match(addr):
+        return None, _bad("address must be a base58 Solana address (32-44 chars)", got=addr[:64])
+    chain = str(p.get("chain") or "solana").lower()
+    if chain != "solana":
+        return None, _bad("only chain='solana' is supported today", got=chain)
+    try:
+        days = int(p.get("days") or 2)
+    except (TypeError, ValueError):
+        return None, _bad("days must be an integer", got=str(p.get("days"))[:32])
+    if not 1 <= days <= MAX_DAYS:
+        return None, _bad("days must be between 1 and %d" % MAX_DAYS, got=days)
+    end = str(p.get("end") or "").strip() or time.strftime("%Y-%m-%d", time.gmtime(time.time() - 86400))
+    try:
+        time.strptime(end, "%Y-%m-%d")
+    except ValueError:
+        return None, _bad("end must be YYYY-MM-DD (UTC)", got=end[:32])
+    return {"address": addr, "days": days, "end": end, "chain": chain}, None
 
 
 
@@ -605,34 +664,16 @@ async def profile(req: Request):
     # ★ Reaching here means **payment already happened**. So: check the cache first, report every
     #   failure honestly, and never swallow one silently.
     try:
-        body = await req.json()
+        raw = await req.json()
     except Exception:
-        body = {}
-    if not isinstance(body, dict):
+        raw = {}
+    if not isinstance(raw, dict):
         return _bad("body must be a JSON object")
-    # ★ Fill anything missing from the body out of the query string — this keeps working when a
-    #   buyer puts the parameters in the URL (the body wins).
-    q = dict(req.query_params)
-    body = {k: (body.get(k) if body.get(k) not in (None, "") else q.get(k))
-            for k in set(body) | set(q)} or body
-
-    addr = str(body.get("address") or "").strip()
-    if not B58.match(addr):
-        return _bad("address must be a base58 Solana address (32-44 chars)", got=addr[:64])
-    chain = str(body.get("chain") or "solana").lower()
-    if chain != "solana":
-        return _bad("only chain='solana' is supported today", got=chain)
-    try:
-        days = int(body.get("days") or 2)
-    except (TypeError, ValueError):
-        return _bad("days must be an integer")
-    if not 1 <= days <= MAX_DAYS:
-        return _bad("days must be between 1 and %d" % MAX_DAYS)
-    end = str(body.get("end") or "").strip() or time.strftime("%Y-%m-%d", time.gmtime(time.time() - 86400))
-    try:
-        time.strptime(end, "%Y-%m-%d")
-    except ValueError:
-        return _bad("end must be YYYY-MM-DD (UTC)")
+    # The middleware already validated this before taking payment; re-run it here so the handler is
+    # still correct on its own (and for X402_DISABLE=1 local runs).
+    vals, err = _parse(_merge(raw, dict(req.query_params)))
+    if err: return err
+    addr, days, end = vals["address"], vals["days"], vals["end"]
     d0, d1 = _shift(end, -(days - 1)), end
 
     t0 = time.time()

@@ -73,7 +73,23 @@ want(app._model_usd({"cost": 0.002, "repair": [{"meta": {"cost": 0.001}},
      "model cost must add the rewrites to the first draft")
 want(app._model_usd({}) == 0.0, "a missing cost must read as zero, not raise")
 
-# ── 5. a queued job is not queued twice ──────────────────────────────────────
+# ── 5. parameter validation (the same function guards both sides of the payment) ──
+GOOD = "4vw54BmAogeRV3vPKWyFet5yf8DTLcREzdSzx4rw9Ud9"
+v, e = app._parse({"address": GOOD})
+want(e is None and v["days"] == 2 and v["chain"] == "solana", "a bare valid address must parse with defaults")
+for p_, why in (({}, "missing address"), ({"address": "nope"}, "malformed address"),
+                ({"address": GOOD, "days": 99}, "days out of range"),
+                ({"address": GOOD, "days": "x"}, "days not an integer"),
+                ({"address": GOOD, "end": "18-09-2026"}, "end in the wrong format"),
+                ({"address": GOOD, "chain": "ethereum"}, "unsupported chain")):
+    v, e = app._parse(p_)
+    want(v is None and e is not None and e.status_code == 400, "must be rejected before payment: %s" % why)
+want(app._merge({"address": ""}, {"address": GOOD})["address"] == GOOD,
+     "the query string must fill a blank body value")
+want(app._merge({"address": GOOD}, {"address": "other"})["address"] == GOOD,
+     "the body must win over the query string")
+
+# ── 6. a queued job is not queued twice ──────────────────────────────────────
 app.JOBS.clear()
 while not app._Q.empty(): app._Q.get_nowait()
 app._start_job("A", "d0", "d1", "kk")
