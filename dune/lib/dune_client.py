@@ -36,7 +36,7 @@ def execute(query_id, params=None, performance="medium"):
     if params: body["query_parameters"] = params
     return _req(f"/query/{query_id}/execute", body)["execution_id"]
 
-def wait(execution_id, poll=5, log=True):
+def wait(execution_id, poll=5, log=True, deadline=None):
     """Poll until a terminal state. With log=True the cost is written to dune/results/cost_log.jsonl.
 
     ⚠️ **Every call is billed twice** (stated on the official billing page, checked 2026-08-19):
@@ -62,6 +62,10 @@ def wait(execution_id, poll=5, log=True):
     carries `read_credits_est` as an estimate of the read cost, and `total_est` as their sum. The
     authoritative total is Dune's own Activity page.
     """
+    # `deadline` (seconds, optional) exists because a caller may hold a lock while waiting: Dune has
+    # no upper bound on how long an execution stays PENDING, and an unbounded wait would block every
+    # other caller behind it. Leaving it None keeps the original behaviour (wait for ever).
+    t_end = None if deadline is None else time.time() + deadline
     while True:
         st = _req(f"/execution/{execution_id}/status")
         state = st.get("state")
@@ -94,6 +98,9 @@ def wait(execution_id, poll=5, log=True):
                 sys.stderr.write(f"[cost] {state} exec={exec_c:.4f} + read={read_c:.4f} "
                                  f"= {exec_c + read_c:.4f} credits  ({rows_n} rows, {by_n} bytes)\n")
             return st
+        if t_end is not None and time.time() > t_end:
+            raise TimeoutError("execution %s is still %s after %ds — giving up rather than blocking "
+                               "the caller indefinitely" % (execution_id, state, deadline))
         time.sleep(poll)
 
 def results(execution_id, limit=None):

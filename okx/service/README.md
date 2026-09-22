@@ -8,7 +8,7 @@ request gets a 200.
 | Route | Paid | What it does |
 |---|---|---|
 | `GET /` | free | What this service is, its routes and its price — the bare domain used to answer `{"detail":"Not Found"}` |
-| `GET /health` | free | Is it alive? **It really pings the facilitator**, so a credential mismatch shows up here |
+| `GET /health` | free | Is it alive? **It really pings the facilitator** (cached 60s), reports how Dune and the model behaved on the last real job, the worker queue and the engine version. `?deep=1` probes Dune and the model directly |
 | `GET /spec` | free | Parameter schema + `report_shape`, for registration and for callers |
 | `POST /profile` | **x402** | `{"address", "days" (1-7, default 2), "end" (YYYY-MM-DD, default yesterday)}` |
 | `GET /report/{token}` | free | Collect a report a paid call started (see "Why a paid call returns a token") |
@@ -118,7 +118,27 @@ can assemble the parameters, but without repeating them on `pay` the replay carr
 | Model | ≈ $0.01 (first draft + 2-3 targeted rewrites) | the report is cached at `okx/data/_svc/<key>.json`; the second call returns `cached: true` |
 | Time | 90-450 s | longest on a Dune cache miss plus three rewrites; the proxy and the x402 timeout are both set to 900 s |
 
-One worker. Before running concurrently, deal with the Dune monthly quota (4,000 credits).
+Every paid call appends one line to `okx/data/_svc/calls.jsonl` — address, window, outcome, Dune
+credits, model dollars, seconds, whether verification passed. Each report also carries its own
+`cost` block. **Without this there is no answer to "what did today cost"**: store.py accumulates the
+credits and the agent returns the model spend, and until 2026-09-22 both were dropped when the
+report was assembled.
+
+## Production behaviour
+
+| Concern | What the service does | Knob |
+|---|---|---|
+| **Concurrency** | A fixed worker pool. A job above the limit queues rather than starting — each job is a Dune query plus a model call, so the limit is about the monthly quota and upstream rate limits, not CPU. Nothing is refused: the caller has already paid | `OKX_MAX_WORKERS` (2) |
+| **Wrong-data race** | ‼️ One Dune scratch query serves every call, so `store.run` rewrites its SQL and executes it. Two jobs doing that at once meant one executed the other's SQL and **silently got the wrong address's data**. Every Dune round trip is now serialised behind a process-wide lock | `DUNE_SCRATCH_QID` |
+| **A stuck Dune execution** | Waiting for an execution is bounded; a query that never finishes releases the lock instead of blocking every other caller for ever | `DUNE_WAIT_DEADLINE` (900s) |
+| **A failed paid call** | Retried for free after a delay, then the failure is returned with its cause. Failures are never written to the report cache | `OKX_MAX_ATTEMPTS` (2), `OKX_RETRY_DELAY` (15s) |
+| **Pickup tokens** | Written under a lock, through a temp file and a rename. A half-written `tokens.json` would turn every outstanding token into "unknown token" for callers who already paid; an unreadable one is moved aside, not silently replaced. Tokens older than the TTL are pruned on write | `OKX_TOKEN_TTL_DAYS` (30) |
+| **Stale reports after a deploy** | The cache key includes `ENGINE_VERSION`, a digest of the layer-3 builder, the fetch layer, the prompt, the verifier and the three word lists. Change any of them and the next call recomputes instead of returning yesterday's answer with `cached: true` | — |
+| **Free endpoints abused** | `/`, `/health`, `/spec` and `/report` are rate limited per IP (the client IP is taken from `X-Forwarded-For`). `POST /profile` is exempt — it is already gated by payment | `OKX_RL_PER_MIN` (60) |
+| **Data-layer failures** | The fetch layer's 14 invariants (`store.selfcheck`) are reported in the response as `verification.data_selfcheck`, and `verification.passed` is the conjunction of that and the 13 report checks. Before 2026-09-22 a caller could read `passed: true` while the fetch layer's own invariants had been violated | — |
+
+Not solved, stated: there is no refund path — x402 settles before the work runs, so a call that fails
+after `MAX_ATTEMPTS` has still been charged. The failure and its cause are returned in full.
 
 ## Files
 

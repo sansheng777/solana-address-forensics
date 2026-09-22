@@ -112,6 +112,11 @@ docker run --rm -v "$PWD":/work -w /work python:3.12-slim python3 okx/tests/test
 docker run --rm -v "$PWD":/work -w /work python:3.12-slim python3 okx/tests/xcheck.py              # conservation check
 docker run --rm -v "$PWD":/work -w /work python:3.12-slim python3 okx/agent/tests/doccheck.py      # docs vs code
 
+# The service layer's own self-test — needs the service image (fastapi lives only there)
+docker build -f okx/service/Dockerfile -t okx-service .
+docker run --rm -e X402_DISABLE=1 -e OKX_ROOT=/app -v "$PWD":/app -w /app okx-service \
+    python3 okx/tests/test_service.py                                                             #  14 assertions
+
 # The verifier, against the shipped sample layer-3 data
 docker run --rm -v "$PWD":/work -w /work python:3.12-slim python3 okx/agent/verify.py \
     okx/agent/tests/fixtures/good.report.json okx/data/_f4_d1_4vw54B.json
@@ -138,6 +143,14 @@ deployment additionally needs OKX x402 seller credentials. See
 | Model | ≈ $0.01 — `deepseek/deepseek-v4-flash`, one draft plus targeted rewrites |
 | Time | 90-450 s cold, ~0.02 s cached |
 
+The service is built for being left running: a fixed worker pool (jobs above the limit queue rather
+than starting), every Dune round trip serialised because one scratch query serves them all, a bounded
+wait so a stuck query cannot block everyone, free retries for a paid call that failed, pickup tokens
+written atomically under a lock, a cache key that includes a digest of the engine that produced the
+report, and a per-IP rate limit on the free routes. Each of those is one line in
+[okx/service/README.md](okx/service/README.md) with the failure it prevents. Every call appends its
+Dune credits and model dollars to `calls.jsonl`.
+
 Because the official x402 buyer client gives up on an HTTP read after 30 seconds, a paid call that
 cannot be served from cache returns a pickup token in under a second and computes in the background;
 `GET /report/{token}` collects it, free, and the same token restarts the job if the service was
@@ -153,7 +166,7 @@ restarted. That design and the reason for it are in
 | [okx/engine/features.py](okx/engine/features.py) | layer 3 — the tables the model reads |
 | [okx/agent/](okx/agent/) | the prompt, the output contract, the 13 checks, the renderer ([README](okx/agent/README.md)) |
 | [okx/service/](okx/service/) | the FastAPI + x402 endpoint and its deployment ([README](okx/service/README.md)) |
-| [okx/tests/](okx/tests/), [okx/agent/tests/](okx/agent/tests/) | the offline self-tests |
+| [okx/tests/](okx/tests/), [okx/agent/tests/](okx/agent/tests/) | the offline self-tests, including the service layer's |
 | [dune/lib/dune_client.py](dune/lib/dune_client.py) | a minimal Dune client, standard library only |
 | `okx/data/` | three sample layer-3 / attribution files so the tests and the verifier run out of the box |
 

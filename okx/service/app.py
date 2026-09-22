@@ -35,7 +35,8 @@ trading-behaviour report out.
     the host — see the environment rules in CLAUDE.md.
     The engine layers (store / features / agent) remain pure standard library.
 """
-import hashlib, json, os, re, secrets, sys, threading, time, calendar
+import hashlib, json, os, queue, re, secrets, sys, threading, time, calendar
+import urllib.request, urllib.error
 
 # The engine layers live in the repo, mounted at /app (see the Dockerfile)
 ROOT = os.environ.get("OKX_ROOT", "/app")
@@ -68,6 +69,29 @@ OUT = os.path.join(ROOT, "okx", "data", "_svc")
 # the only injection surface
 B58 = re.compile(r"^[1-9A-HJ-NP-Za-km-z]{32,44}$")
 MAX_DAYS = int(os.environ.get("OKX_MAX_DAYS") or 7)
+
+# ★ The report cache is keyed by (address, window) **and by the code that produced it**. Without the
+#   second half, redeploying a changed prompt, verifier or layer-3 table silently kept serving the
+#   old report — with `cached: true` and no way for the caller to tell which engine wrote it.
+def _engine_version():
+    h = hashlib.sha256()
+    for rel in ("okx/engine/features.py", "okx/engine/store.py", "okx/agent/prompt.md",
+                "okx/agent/verify.py", "okx/agent/SCHEMA.md", "okx/agent/repair.md",
+                "okx/agent/forbidden.txt", "okx/agent/vague.txt", "okx/agent/follower-banned.txt"):
+        try:
+            h.update(open(os.path.join(ROOT, rel), "rb").read())
+        except OSError:
+            h.update(b"?" + rel.encode())        # a missing file must change the digest, not crash
+    return h.hexdigest()[:8]
+
+
+ENGINE_VERSION = _engine_version()
+# How many reports may be computed at once. Each one is a Dune query plus a model call, so this is
+# about the quota and the upstream rate limits, not about CPU. Jobs above the limit queue.
+MAX_WORKERS = max(1, int(os.environ.get("OKX_MAX_WORKERS") or 2))
+# A paid call whose job failed is retried for free, this many times, before the failure is returned.
+MAX_ATTEMPTS = max(1, int(os.environ.get("OKX_MAX_ATTEMPTS") or 2))
+RETRY_DELAY = int(os.environ.get("OKX_RETRY_DELAY") or 15)   # seconds before a failed job is retried
 
 # ★ X402_DISABLE=1 is for **local smoke tests only**: skip payment and exercise the business path.
 #   Why it is needed: on its first request the payment middleware calls the OKX facilitator's
@@ -154,6 +178,43 @@ else:
     app.add_middleware(PaymentMiddlewareASGI, routes=ROUTES, server=server)
 
 
+# ═══ Rate limit, free routes only ════════════════════════════════════════════
+# /, /health, /spec and /report are unauthenticated and free. /health in particular used to reach an
+# upstream service on every request. POST /profile is deliberately exempt: it is already gated by
+# payment, and throttling someone who has paid would be the wrong kind of protection.
+RL_MAX = int(os.environ.get("OKX_RL_PER_MIN") or 60)
+_rl = {}
+_rllock = threading.Lock()
+
+
+def _rate_ok(ip):
+    now = int(time.time() // 60)
+    with _rllock:
+        if len(_rl) > 10000:                       # a flood from many IPs must not grow without bound
+            for k, v in list(_rl.items()):
+                if v[0] != now: _rl.pop(k, None)
+        minute, n = _rl.get(ip, (now, 0))
+        if minute != now:
+            minute, n = now, 0
+        n += 1
+        _rl[ip] = (minute, n)
+        return n <= RL_MAX
+
+
+@app.middleware("http")
+async def _throttle(request: Request, call_next):
+    if request.method != "POST":
+        # Behind Caddy the peer is the proxy, so the client is the first hop in X-Forwarded-For.
+        ip = (request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+              or (request.client.host if request.client else "-"))
+        if not _rate_ok(ip):
+            return JSONResponse(status_code=429, content={
+                "error": "too many requests",
+                "limit_per_minute": RL_MAX,
+                "hint": "Poll a report_url about once a minute; it is not ready sooner."})
+    return await call_next(request)
+
+
 @app.exception_handler(Exception)
 async def _on_error(request: Request, exc: Exception):
     """★ Report facilitator credential/network problems separately from real server bugs.
@@ -178,7 +239,8 @@ async def index():
             "price_per_call": PRICE, "network": NETWORK, "chain": "solana",
             "routes": {
                 "GET /": "this page",
-                "GET /health": "liveness, including a real ping of the x402 facilitator",
+                "GET /health": "liveness: the x402 facilitator, and how Dune and the model "
+                               "behaved on the last real call (?deep=1 probes them directly)",
                 "GET /spec": "parameter schema and the shape of the report",
                 "POST /profile": "the paid call (x402); see /spec for parameters",
                 "GET /report/{token}": "free pickup for a report a paid call started"},
@@ -188,20 +250,80 @@ async def index():
             "note": "Read-only. This service never trades and never signs anything."}
 
 
+_FAC = {"at": 0.0, "value": "unknown"}
+_FAC_TTL = 60
+
+
+def _facilitator_status():
+    """Ping the facilitator, but **at most once a minute**. /health is free and unauthenticated, so
+    one ping per request means anyone with a loop is hammering OKX's endpoint through us — a good
+    way to get rate limited on the path that takes the money."""
+    if X402_OFF:
+        return "disabled"
+    if time.time() - _FAC["at"] < _FAC_TTL:
+        return _FAC["value"]
+    try:
+        facilitator.get_supported()
+        _FAC["value"] = "ok"
+    except Exception as e:
+        _FAC["value"] = "FAIL: %s" % str(e)[:200]
+    _FAC["at"] = time.time()
+    return _FAC["value"]
+
+
+def _probe(url, headers, name):
+    try:
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=15) as r:
+            return {"ok": 200 <= r.status < 300, "http": r.status}
+    except urllib.error.HTTPError as e:
+        return {"ok": False, "http": e.code, "error": e.read()[:120].decode("utf-8", "replace")}
+    except Exception as e:
+        return {"ok": False, "error": "%s: %s" % (type(e).__name__, str(e)[:120])}
+
+
+def _deep():
+    """Really call Dune and the model vendor. Both endpoints are metadata reads: Dune's query
+    definition costs no credits (credits are charged for executions and result reads) and
+    OpenRouter's /key returns the account's own limits. Kept behind ?deep=1 so the cheap /health
+    stays cheap."""
+    out = {}
+    dk = os.environ.get("DUNE_API_KEY", "")
+    out["dune"] = ({"ok": False, "error": "DUNE_API_KEY is not set"} if not dk else
+                   _probe("https://api.dune.com/api/v1/query/%s"
+                          % os.environ.get("DUNE_SCRATCH_QID", "8376415"),
+                          {"X-Dune-API-Key": dk}, "dune"))
+    ok_ = os.environ.get("OPENROUTER_API_KEY", "")
+    out["model"] = ({"ok": False, "error": "OPENROUTER_API_KEY is not set"} if not ok_ else
+                    _probe("https://openrouter.ai/api/v1/key",
+                           {"Authorization": "Bearer " + ok_}, "model"))
+    return out
+
+
 @app.get("/health")
-async def health():
-    """Free. ★ It really pings the facilitator — a credential mismatch has to be visible here, not
-    at the moment a user pays."""
-    fac = "disabled" if X402_OFF else "unknown"
-    if not X402_OFF:
-        try:
-            facilitator.get_supported()
-            fac = "ok"
-        except Exception as e:
-            fac = "FAIL: %s" % str(e)[:200]
-    return {"status": "ok" if fac in ("ok", "disabled") else "degraded",
+async def health(deep: int = 0):
+    """Free. ★ It really pings the facilitator (cached for 60s) — a credential mismatch has to be
+    visible here, not at the moment a user pays.
+    ★ 2026-09-22: the facilitator was the *only* thing checked, while the two dependencies that
+    actually make a paid call fail are Dune and the model. `last_call` reports how each of them
+    behaved on the last real job (free, no probing), and `?deep=1` probes them for real."""
+    fac = _facilitator_status()
+    body = {"status": "ok" if fac in ("ok", "disabled") else "degraded",
             "network": NETWORK, "price": PRICE, "chain": "solana",
-            "facilitator": fac, "pay_to": PAY_TO}
+            "facilitator": fac, "pay_to": PAY_TO,
+            "engine_version": ENGINE_VERSION,
+            "workers": {"max": MAX_WORKERS, "queued": _Q.qsize(),
+                        "running": sum(1 for j in JOBS.values() if j.get("status") == "running")},
+            "credentials_present": {k: bool(os.environ.get(k)) for k in
+                                    ("DUNE_API_KEY", "OPENROUTER_API_KEY", "OKX_API_KEY")},
+            "last_call": {k: (v and {**v, "ago_seconds": round(time.time() - v["at"])})
+                          for k, v in LAST.items()}}
+    if deep:
+        d = _deep()
+        body["deep"] = d
+        if not all(x.get("ok") for x in d.values()):
+            body["status"] = "degraded"
+    return body
 
 
 @app.get("/spec")
@@ -210,6 +332,8 @@ async def spec():
     registration is its prose version."""
     return {"service": SERVICE_DESC, "method": "POST", "path": "/profile",
             "parameters": PARAMS, "price_per_call": PRICE, "network": NETWORK,
+            # The report cache is keyed by this too, so a caller can tell which engine wrote a report
+            "engine_version": ENGINE_VERSION,
             "typical_seconds": [90, 450],
             # ★ The official buyer CLI reads for 30 seconds, so a paid call hands back a pickup
             #   token instead of waiting (see how_it_works)
@@ -248,21 +372,80 @@ def _bad(msg, **extra):
 # → So `POST /profile` must answer within seconds: a cache hit returns the report, a miss **starts
 #   the work in the background and hands back a pickup token**, which the caller redeems at the free
 #   `GET /report/{token}`. The payment bought the computation; picking it up is not charged again.
-JOBS = {}                      # key → {"status","started","result"}
+JOBS = {}                      # key → {"status","started","result","attempts"}
 TOKENS_F = os.path.join(OUT, "tokens.json")
-_jlock = threading.Lock()
+CALLS_F = os.path.join(OUT, "calls.jsonl")      # one line per paid call: what it cost and how it ended
+_jlock = threading.Lock()      # guards JOBS
+_tlock = threading.Lock()      # guards tokens.json: read-modify-write has to be one operation
+TOKEN_TTL = int(os.environ.get("OKX_TOKEN_TTL_DAYS") or 30) * 86400
+# The outcome of the **last real call** to each dependency. /health reports it, which is how a dead
+# Dune key or an empty model account becomes visible without probing (and without costing anything).
+LAST = {"dune": None, "model": None}
+
+
+def _atomic_write(path, obj):
+    """Write via a temp file and rename. ‼️ `json.dump(open(path,"w"))` leaves a truncated file if the
+    process dies mid-write, and this file is the only record of which tokens were handed out — a
+    corrupt one turns every outstanding token into "unknown token" for callers who already paid."""
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(obj, f, ensure_ascii=False)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, path)
 
 
 def _tokens():
+    """Read the token table. A corrupt file is **moved aside, not silently ignored** — otherwise the
+    next write would overwrite it with {} and the loss would leave no trace."""
     try:
         return json.load(open(TOKENS_F, encoding="utf-8"))
-    except Exception:
+    except FileNotFoundError:
         return {}
+    except Exception as e:
+        try:
+            os.replace(TOKENS_F, TOKENS_F + ".corrupt-%d" % int(time.time()))
+            print("!!! tokens.json was unreadable (%s), moved aside" % e, flush=True)
+        except OSError:
+            pass
+        return {}
+
+
+def _token_put(token, rec):
+    """Add one token. Under the lock, because read-modify-write from two paid calls at once would
+    drop one of them — and that caller has already been charged."""
+    with _tlock:
+        tk = _tokens()
+        now = time.time()
+        tk = {k: v for k, v in tk.items() if now - (v.get("created") or 0) < TOKEN_TTL}
+        tk[token] = rec
+        _atomic_write(TOKENS_F, tk)
+
+
+def _record_call(**kw):
+    """Append one line per paid call. Without this there is no answer to "what did today cost" —
+    store.py accumulates the Dune credits and the agent returns the model spend, and both used to be
+    dropped on the floor when the report was assembled."""
+    kw["at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    try:
+        os.makedirs(os.path.dirname(CALLS_F), exist_ok=True)
+        with open(CALLS_F, "a", encoding="utf-8") as f:      # O_APPEND: one short line is atomic
+            f.write(json.dumps(kw, ensure_ascii=False) + "\n")
+    except OSError:
+        pass
+
+
+def _model_usd(meta):
+    """The model spend of one report = the first draft plus every targeted rewrite."""
+    tot = float(meta.get("cost") or 0)
+    for r in meta.get("repair") or []:
+        tot += float(((r or {}).get("meta") or {}).get("cost") or 0)
+    return round(tot, 6)
 
 
 def _run_job(addr, d0, d1, key):
     """The part that actually works (fetch → tables → model → verify → render). Synchronous and
-    blocking; it runs on a background thread."""
+    blocking; it runs on a worker thread."""
     t0 = time.time()
     import store, features, run as agent, verify, render
     agent._load_env()
@@ -273,53 +456,116 @@ def _run_job(addr, d0, d1, key):
     store.CACHE_DIR = CACHE
     try:
         raw = store.profile(addr, d0, d1)                     # ① fetch (Dune)
+        LAST["dune"] = {"ok": True, "at": time.time()}
     except Exception as e:
+        LAST["dune"] = {"ok": False, "at": time.time(), "error": str(e)[:200]}
+        _record_call(key=key, address=addr, window=[d0, d1], outcome="dune_failed",
+                     seconds=round(time.time() - t0, 1), error=str(e)[:200])
         return {"status": "failed", "error": "upstream data query failed", "detail": str(e)[:400]}
+    dune_credits = round(float((raw.get("cost") or {}).get("credits") or 0.0), 4)
     tables = features.build(raw)                              # ② tables (pure local)
     if not (tables.get("based_on") or {}).get("coins"):
+        _record_call(key=key, address=addr, window=[d0, d1], outcome="no_closed_trades",
+                     dune_credits=dune_credits, seconds=round(time.time() - t0, 1))
         return {"address": addr, "window": [d0, d1], "status": "no_closed_trades",
                 "note": "This address has no complete buy→sell round inside the window. "
-                        "Try a longer `days`.", "tables": tables}
+                        "Try a longer `days`.", "tables": tables,
+                "cost": {"dune_credits": dune_credits, "model_usd": 0.0}}
     try:
         rep, viol, meta = agent.generate(tables, stem=os.path.join(OUT, key), log=lambda *a: None)
+        LAST["model"] = {"ok": True, "at": time.time()}
     except Exception as e:                                    # ③ model (incl. targeted rewrites)
+        LAST["model"] = {"ok": False, "at": time.time(), "error": str(e)[:200]}
+        _record_call(key=key, address=addr, window=[d0, d1], outcome="model_failed",
+                     dune_credits=dune_credits, seconds=round(time.time() - t0, 1),
+                     error=str(e)[:200])
         return {"status": "failed", "error": "report generation failed",
-                "detail": str(e)[:400], "tables": tables}
+                "detail": str(e)[:400], "tables": tables,
+                "cost": {"dune_credits": dune_credits, "model_usd": 0.0}}
 
+    # ★ Two independent verdicts, both reported. `passed` is the conjunction, because a caller who
+    #   reads one boolean must not get "true" while the fetch layer's own invariants were violated
+    #   (before 2026-09-22 the layer-0-3 selfcheck only sat inside tables.based_on, where nobody
+    #   looked).
+    sc = (tables.get("based_on") or {}).get("selfcheck")
+    data_ok = (sc == "passed")
     out = {
         "address": addr, "window": [d0, d1], "chain": "solana",
         "report": rep,                                        # structured JSON for the calling agent
         "markdown": render.render(rep, tables),               # for a human, sources as endnotes
         "tables": tables,                                     # the layer-3 tables, so a caller can recheck
         "verification": {
-            "passed": not viol, "violations": viol,
-            "checks": verify.CHECK_COUNT,
+            "passed": bool(not viol and data_ok),
+            "report_checks": {"passed": not viol, "count": verify.CHECK_COUNT, "violations": viol},
+            "data_selfcheck": {"passed": data_ok,
+                               "violations": [] if data_ok else (sc if isinstance(sc, list) else [sc])},
+            "engine_version": ENGINE_VERSION,
             "what_it_guarantees":
                 "Every number in the report resolves to a row in `tables`; no arithmetic, "
                 "no vague quantifiers, no trading advice. It does NOT guarantee the "
                 "conclusions are the right ones to draw.",
         },
+        "cost": {"dune_credits": dune_credits, "model_usd": _model_usd(meta)},
         "cached": False, "seconds": round(time.time() - t0, 1),
     }
-    json.dump(out, open(os.path.join(OUT, key + ".json"), "w", encoding="utf-8"), ensure_ascii=False)
+    _atomic_write(os.path.join(OUT, key + ".json"), out)
+    _record_call(key=key, address=addr, window=[d0, d1], outcome="ok",
+                 dune_credits=dune_credits, model_usd=out["cost"]["model_usd"],
+                 seconds=out["seconds"], verified=out["verification"]["passed"])
     return out
 
 
-def _start_job(addr, d0, d1, key):
-    """Start the work in the background. The same (address, window) is never started twice."""
-    def _go():
+# ═══ A fixed worker pool, not a thread per job ═══════════════════════════════
+# One job is a Dune query plus a model call, so running many at once burns the Dune monthly quota and
+# trips upstream rate limits — and, before the lock in store.py, made the shared scratch query race
+# a certainty. Jobs above MAX_WORKERS wait in a queue; nothing is refused, because the caller has
+# already paid.
+_Q = queue.Queue()
+
+
+def _worker():
+    while True:
+        addr, d0, d1, key = _Q.get()
+        with _jlock:
+            j = JOBS.setdefault(key, {"status": "queued", "started": time.time(), "attempts": 0})
+            j["status"] = "running"
+            j["attempts"] = j.get("attempts", 0) + 1
+            j["running_since"] = time.time()
         try:
             r = _run_job(addr, d0, d1, key)
         except Exception as e:
             r = {"status": "failed", "error": type(e).__name__, "detail": str(e)[:400]}
+        failed = isinstance(r, dict) and r.get("status") == "failed"
         with _jlock:
-            JOBS[key] = {"status": "done", "started": JOBS.get(key, {}).get("started", time.time()),
-                         "result": r}
+            j = JOBS.get(key) or {}
+            attempts = j.get("attempts", 1)
+            retry = failed and attempts < MAX_ATTEMPTS
+            JOBS[key] = {"status": "queued" if retry else "done",
+                         "started": j.get("started", time.time()),
+                         "attempts": attempts, "result": None if retry else r}
+        if retry:
+            # ★ The caller already paid, so a failure is retried for free rather than returned.
+            #   The delay matters: most failures here are a busy or rate-limited upstream, and an
+            #   immediate retry just fails again. The timer keeps the worker free while it waits.
+            print("job %s failed (attempt %d/%d), retrying in %ds: %s"
+                  % (key, attempts, MAX_ATTEMPTS, RETRY_DELAY,
+                     str(r.get("detail") or r.get("error"))[:120]), flush=True)
+            threading.Timer(RETRY_DELAY, _Q.put, args=((addr, d0, d1, key),)).start()
+        _Q.task_done()
+
+
+for _i in range(MAX_WORKERS):
+    threading.Thread(target=_worker, daemon=True, name="okx-worker-%d" % _i).start()
+
+
+def _start_job(addr, d0, d1, key):
+    """Queue the work. The same (address, window) is never queued twice."""
     with _jlock:
-        if JOBS.get(key, {}).get("status") == "running":
+        st = (JOBS.get(key) or {}).get("status")
+        if st in ("queued", "running"):
             return
-        JOBS[key] = {"status": "running", "started": time.time(), "result": None}
-    threading.Thread(target=_go, daemon=True).start()
+        JOBS[key] = {"status": "queued", "started": time.time(), "attempts": 0, "result": None}
+    _Q.put((addr, d0, d1, key))
 
 
 @app.get("/report/{token}")
@@ -340,11 +586,14 @@ async def report(token: str):
         job = dict(JOBS.get(key) or {})
     if job.get("status") == "done":
         return job["result"]
-    if job.get("status") == "running":
-        return {"status": "computing", "elapsed_seconds": round(time.time() - job["started"], 1),
+    if job.get("status") in ("queued", "running"):
+        return {"status": "computing",
+                "queue_position": _Q.qsize() if job["status"] == "queued" else 0,
+                "attempt": job.get("attempts", 1),
+                "elapsed_seconds": round(time.time() - job["started"], 1),
                 "retry_after_seconds": 60,
                 "note": "Still working. A cold address takes 90-450s (Dune query + model + "
-                        "up to 3 verification rewrites)."}
+                        "up to 3 verification rewrites); a queued job is waiting for a free worker."}
     # The service restarted and the job was lost → restart it under the same token, still free
     _start_job(t["address"], t["window"][0], t["window"][1], key)
     return {"status": "computing", "elapsed_seconds": 0.0, "retry_after_seconds": 60,
@@ -388,7 +637,10 @@ async def profile(req: Request):
 
     t0 = time.time()
     os.makedirs(OUT, exist_ok=True)
-    key = hashlib.sha256(("%s|%s|%s" % (addr, d0, d1)).encode()).hexdigest()[:16]
+    # ★ ENGINE_VERSION is part of the key: after a deploy that changes the prompt, the verifier or
+    #   a layer-3 table, the old report is no longer "the answer to this question" and must not
+    #   come back with `cached: true`.
+    key = hashlib.sha256(("%s|%s|%s|%s" % (addr, d0, d1, ENGINE_VERSION)).encode()).hexdigest()[:16]
     done = os.path.join(OUT, key + ".json")
     if os.path.exists(done):
         # This (address, window) was computed before — return it and burn neither Dune

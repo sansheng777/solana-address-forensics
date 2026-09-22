@@ -41,7 +41,7 @@ Key definitions (every one has a source; the SQL headers under okx/sql/ carry th
     · mayhem gets no special handling; it is passed through as a flag
 """
 import hashlib
-import collections, json, os, re, sys, time
+import collections, json, os, re, sys, threading, time
 
 sys.path.insert(0, "/work/dune/lib")
 import dune_client as dc
@@ -118,6 +118,18 @@ def _lit(values):
 
 CACHE_DIR = None        # enabled by --cache; only Dune responses are cached, local logic always reruns
 
+# ‼️ **One scratch query serves every call**: run() rewrites SCRATCH_QID's SQL and then executes it.
+#    Two threads doing that at once means one of them executes the other's SQL and **silently gets
+#    the wrong address's data** — no error, plausible numbers, wrong answer. The service runs jobs
+#    on background threads (okx/service/app.py), so this is reachable in production, not theory.
+#    → Every Dune round trip is serialised here. It costs nothing: Dune is the slow, paid, external
+#      step and we never wanted two of them in flight anyway.
+#    ⚠️ This lock is per process. Should the service ever run more than one worker process, the
+#      scratch query id must become per worker (DUNE_SCRATCH_QID) or the race returns.
+_DUNE_LOCK = threading.Lock()
+# An execution that stays PENDING for ever would hold that lock for ever, so waiting is bounded.
+DUNE_DEADLINE = int(os.environ.get("DUNE_WAIT_DEADLINE") or 900)
+
 
 def run(name, cost, **params):
     """Run okx/sql/<name>.sql, return its rows and accumulate the cost into the cost dict.
@@ -152,13 +164,13 @@ def run(name, cost, **params):
                                                      seconds=0.0, cached=True))
             return rows
 
-    dc.update_query(SCRATCH_QID, sql, name="okx store · %s" % name)
     t0 = time.time()
-    st = dc.wait(dc.execute(SCRATCH_QID), poll=5, log=False)
-    if st.get("state") != "QUERY_STATE_COMPLETED":
-        raise DuneError("%s failed: %s" % (name, json.dumps(st.get("error"), ensure_ascii=False)[:300]))
-
-    res  = dc.results(st["execution_id"])
+    with _DUNE_LOCK:                         # see the comment on _DUNE_LOCK: the scratch query is shared
+        dc.update_query(SCRATCH_QID, sql, name="okx store · %s" % name)
+        st = dc.wait(dc.execute(SCRATCH_QID), poll=5, log=False, deadline=DUNE_DEADLINE)
+        if st.get("state") != "QUERY_STATE_COMPLETED":
+            raise DuneError("%s failed: %s" % (name, json.dumps(st.get("error"), ensure_ascii=False)[:300]))
+        res  = dc.results(st["execution_id"])
     rows = (res.get("result") or {}).get("rows") or []
     meta = (res.get("result") or {}).get("metadata") or {}
     # ★ Credits come in two halves and are recorded separately (2026-09-19) — deciding whether
