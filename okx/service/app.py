@@ -356,7 +356,8 @@ async def spec():
             "parameters": PARAMS, "price_per_call": PRICE, "network": NETWORK,
             # The report cache is keyed by this too, so a caller can tell which engine wrote a report
             "engine_version": ENGINE_VERSION,
-            "typical_seconds": [90, 450],
+            # measured in production 2026-09-22: 378 s for a 2-day cold window, 653 s for 5 days
+            "typical_seconds": [380, 660],
             # ★ The official buyer CLI reads for 30 seconds, so a paid call hands back a pickup
             #   token instead of waiting (see how_it_works)
             "how_it_works": {
