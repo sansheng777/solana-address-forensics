@@ -1,0 +1,35 @@
+# Copy-this-checklist content — scanned ONLY inside edge.follower (check 10).
+#
+# The same words are normal in facts ("first buy sizes cluster at 150-350"); inside `follower`
+# they turn the section into "how to imitate him", which tells a follower nothing about the
+# position they would actually be in.
+#
+# The user went through a 0-violation report on 2026-09-20 and found four of five advice lines
+# useless — these four families are exactly those. The file name changed from advice-banned.txt
+# on 2026-09-21 when the section was renamed.
+#
+# `re:` lines are regular expressions (case-insensitive); other lines are plain words.
+
+# ── ① buy size: size and PnL have no causal link here ──
+re:\b(first buy|entry|order|position|stake|trade) size\b
+re:\b(buy|enter|stake|allocate)\s+\$?\d
+re:\bsize your (buy|order|entry|position)\b
+re:\b150-350\b
+
+# ── ② tooling: zero information for "can I follow this" ──
+re:\b(router|aggregator|terminal|platform|program|tooling)\b
+re:\bsame (program|tool|router|software)\b
+re:\buse (a|the) (fast|faster|similar) (tool|router|client)\b
+
+# ── ③ his loss extremes are his, not the follower's ──
+re:\b(max|maximum|largest|worst)[- ](loss|drawdown)\b
+re:\b(be able to |must |need to |have to )?(absorb|withstand|stomach|tolerate)\b
+
+# ── ④ speed requirements: following is not a speed problem, the problem is the exit ──
+re:\bwithin \d+\s*(s|sec|secs|seconds|ms)\b
+re:\b(match|keep up with|replicate) (his|the|this) (entry|buy|build|execution) (speed|pace)\b
+re:\bfill (your|the) buy (in|within)\b
+
+# ── ⑤ activity hours belong in edge.say as a correction, not in the follower's position ──
+re:\b(active|quiet|idle|dormant|zero[- ]fill|no[- ]fill) (hours?|window|windows|period|periods|session|sessions)\b
+re:\btrade(s)? (only )?(between|during) \d{2}

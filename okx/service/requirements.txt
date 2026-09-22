@@ -1,0 +1,19 @@
+# OKX Onchain OS payment SDK (x402 seller side) + the ASGI stack.
+#
+# ⚠️ **The official install command is incomplete.** The docs say
+#    `pip install okxweb3-app-x402 fastapi uvicorn`, but installed that way
+#        from x402.mechanisms.evm.exact.server import ExactEvmScheme
+#    raises: ImportError: EVM mechanism requires ethereum packages. Install with: pip install x402[evm]
+#    And x402's `exact` scheme IS the EVM one — without that extra the service cannot start at all.
+#    Measured 2026-09-20: the [evm] extra is mandatory.
+#
+# ⚠️ **`httpx` is missing from the docs too.** The SDK's facilitator client does a lazy
+#    `import httpx` inside `_get_sync_client()`, and it is neither declared as a dependency nor
+#    mentioned anywhere. It only fails on the first real request:
+#        ModuleNotFoundError: No module named 'httpx'
+#    A missing dependency behind a lazy import **is invisible at startup** and only surfaces under
+#    real traffic, which is the worst way to find out.
+okxweb3-app-x402[evm]
+httpx
+fastapi
+uvicorn[standard]

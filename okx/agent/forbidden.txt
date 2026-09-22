@@ -1,0 +1,33 @@
+# Banned words — scanned across facts and all three body sections (check 7).
+#
+# Two families live here:
+#   ① claims that cross a semantic layer (the chain cannot distinguish them)
+#   ② adjectives of degree with no baseline — we have no peer benchmark, so "high" is unfounded
+#
+# A line starting with `re:` is a regular expression (matched case-insensitively); anything else
+# is a plain word matched on word boundaries. Text after # on a line is a comment.
+
+# ── ① identity claims: the chain shows behaviour, never an operator ──
+re:\bbots?\b
+re:\brobots?\b
+re:\bscripts?\b
+re:\bautomated (program|system|software|trading)\b
+re:\b(human|manual)(ly)?[- ](operat|monitor|watch|run)\w*
+re:\b(watch|watching|monitor|monitoring|staring at)\b[^.;]{0,20}\b(screen|chart|charts|terminal)\b
+re:\bby hand\b
+re:\bsits? at (the|a) (screen|keyboard)\b
+# NOTE: "no human could reach this speed" is allowed — it describes the data, not the operator.
+
+# ── ② degree without a baseline ──
+re:\b(very|quite|relatively|fairly|extremely|highly|unusually|remarkably)\s+(high|low|large|small|big|fast|slow|strong|weak|good|bad|profitable|active)\b
+re:\b(significantly|notably|remarkably|considerably|substantially|dramatically|markedly)\b
+re:\b(excellent|impressive|outstanding|superb|solid|healthy|robust|stable|consistent|disciplined|sloppy|reckless|smart|skilled|savvy)\b
+re:\b(aggressive|conservative|patient|impatient)\b
+re:\b(tiny|huge|massive|enormous)\s+(gain|profit|loss|win|drawdown)\b
+re:\b(a|an)\s+(high|low)\s+(win rate|hit rate|success rate|pnl|return)\b
+
+# ── ③ prescriptions: we do not tell this address how to trade ──
+re:\b(should|ought to|had better)\b
+re:\bneeds? to (improve|reduce|increase|lower|raise|tighten|cut)\b
+re:\b(recommend|advise|suggest)(s|ed|ing)?\b
+re:\bavoid (holding|buying|entering|trading)\b

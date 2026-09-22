@@ -1,0 +1,104 @@
+{
+ "address": "4vw54BmAogeRV3vPKWyFet5yf8DTLcREzdSzx4rw9Ud9",
+ "window": [
+  "2026-09-18",
+  "2026-09-18"
+ ],
+ "layer3_digest": "aeeac60d77ea",
+ "facts": [
+  {
+   "id": "f0",
+   "say": "this profile is based on 97 visible coins and 694 fills",
+   "cite": "based_on"
+  },
+  {
+   "id": "f0b",
+   "say": "another 64 coins were traded but have no visible detail",
+   "cite": "not_visible›total"
+  },
+  {
+   "id": "f1",
+   "say": "the most common buy size is listed in the source",
+   "cite": "per_fill_distribution›buy_size"
+  },
+  {
+   "id": "f2",
+   "say": "41 coins were bought within 10s of creation, 42.3% of the total",
+   "cite": "per_coin_buckets›entry·time: seconds after coin creation›<10s"
+  },
+  {
+   "id": "f3",
+   "say": "43 coins were held 15-60s, 44.3% of the total",
+   "cite": "per_coin_buckets›exit·time: seconds held›15-60s"
+  },
+  {
+   "id": "f4",
+   "say": "71 coins were sold in one fill, 73.2% of the total",
+   "cite": "per_coin_buckets›exit·style: number of sells›1"
+  },
+  {
+   "id": "f5",
+   "say": "the most common action combo covers 38 coins, 39.2% of the total",
+   "cite": "action_combos›rows›inner→inner · buy 2-4 · sell 1 · hold <1m"
+  },
+  {
+   "id": "f6",
+   "say": "89.3% of the bought volume sits in the up0~10 band relative to the first buy",
+   "cite": "buy_sell_ladder›rows›up0~10"
+  },
+  {
+   "id": "f7",
+   "say": "the coins come from pumpfun and launchlab",
+   "cite": "coin_attributes›by_launchpad"
+  },
+  {
+   "id": "f8",
+   "say": "net PnL over the window is 7963 USD",
+   "cite": "pnl_distribution›net"
+  },
+  {
+   "id": "f8b",
+   "say": "the win rate over the window is 64.9%",
+   "cite": "pnl_distribution›win_rate_pct"
+  },
+  {
+   "id": "fw",
+   "say": "entry curve progress is listed in the source",
+   "cite": "per_coin_buckets›entry·position: curve progress"
+  },
+  {
+   "id": "fw2",
+   "say": "exit curve progress is listed in the source",
+   "cite": "per_coin_buckets›exit·position: curve progress"
+  },
+  {
+   "id": "f9",
+   "say": "the first segment's win rate is listed in the source",
+   "cite": "by_period›rows›2026-09-18"
+  }
+ ],
+ "profile": {
+  "say": "hold time clusters at 15-60s (43 coins, 44.3%) and 71 coins are sold in one fill",
+  "legs": [
+   "f3",
+   "f4"
+  ]
+ },
+ "result": {
+  "say": "net PnL over the window is 7963 USD at a 64.9% win rate",
+  "legs": [
+   "f8",
+   "f8b"
+  ]
+ },
+ "edge": {
+  "source": "execution",
+  "say": "41 coins were bought within 10s of creation (42.3%) and buy sizes repeat on the same values — the edge is in execution",
+  "follower": "that one beat is his edge and a follower cannot get it; he is out within minutes, so a follower takes the other side of his sells",
+  "legs": [
+   "f1",
+   "f2",
+   "f3"
+  ]
+ }
+}

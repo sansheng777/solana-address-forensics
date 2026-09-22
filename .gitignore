@@ -1,0 +1,10 @@
+**/.env
+!**/.env.example
+__pycache__/
+*.pyc
+okx/data/*
+!okx/data/_f4_4vw54B.json
+!okx/data/_f4_d1_4vw54B.json
+!okx/data/_fin2_4MPwyF.json
+okx/agent/out/
+*.tar.gz

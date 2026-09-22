@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Run a Dune-backed python script inside a container (injecting DUNE_API_KEY from dune/.env).
+# Usage: ./bin/dune-py /work/okx/engine/store.py <address> --days 5 --end 2026-09-18
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+args=(); for a in "$@"; do args+=("${a/#$ROOT//work}"); done
+envflag=(); [ -f "$ROOT/dune/.env" ] && envflag=(--env-file "$ROOT/dune/.env")
+tty_flags=(-i); [ -t 0 ] && [ -t 1 ] && tty_flags=(-it)
+exec docker run --rm "${tty_flags[@]}" "${envflag[@]}" \
+  -v "$ROOT":/work -w /work python:3.12-slim python3 "${args[@]}"

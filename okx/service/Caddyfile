@@ -1,0 +1,17 @@
+# Reverse proxy + automatic HTTPS. DOMAIN is injected from compose's environment.
+# One call takes 2-4 minutes (longer on a Dune cache miss), so the proxy timeouts must be generous or
+# the client is cut off before the work finishes.
+{$DOMAIN} {
+	encode gzip
+	reverse_proxy okx-service:4021 {
+		transport http {
+			read_timeout 900s
+			write_timeout 900s
+			dial_timeout 10s
+		}
+	}
+	log {
+		output stdout
+		format console
+	}
+}

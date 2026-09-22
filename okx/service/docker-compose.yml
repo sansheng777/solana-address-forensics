@@ -1,0 +1,49 @@
+# okx/service — the compose file for public deployment (run on the server; local development does
+# not use this one).
+#
+#   cp okx/service/.env.example okx/service/.env && chmod 600 okx/service/.env   # fill in credentials
+#   DOMAIN=api.example.com docker compose -f okx/service/docker-compose.yml up -d --build
+#   curl https://$DOMAIN/health
+#
+# Two containers: okx-service (FastAPI + the x402 seller side) listens on the container network only,
+# while caddy owns 80/443 and issues HTTPS automatically.
+# The build context is the repository root (the Dockerfile's COPY paths are written from there), and
+# the root .dockerignore keeps credentials and collected data out of the image.
+services:
+  okx-service:
+    build:
+      context: ../..
+      dockerfile: okx/service/Dockerfile
+    image: meme/okx-service
+    env_file: .env
+    environment:
+      X402_TIMEOUT: "900"
+    volumes:
+      # Dune query cache + report cache + the credits log. ★ One (address, window) burns Dune and
+      # the model exactly once
+      - okx_data:/app/okx/data
+    expose: ["4021"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request,sys;sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:4021/health',timeout=10).status==200 else 1)"]
+      interval: 60s
+      timeout: 15s
+      retries: 3
+      start_period: 20s
+
+  caddy:
+    image: caddy:2-alpine
+    depends_on: [okx-service]
+    ports: ["80:80", "443:443"]
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN=your.domain}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+
+volumes:
+  okx_data:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,481 @@
+{
+ "address": "4vw54BmAogeRV3vPKWyFet5yf8DTLcREzdSzx4rw9Ud9",
+ "window": [
+  "2026-09-14",
+  "2026-09-18"
+ ],
+ "based_on": {
+  "coins": 585,
+  "fills": 4007,
+  "bought_not_fully_sold": {
+   "coins": 33,
+   "pct_of_bought_in_window": 5.3,
+   "meaning": "his holding on these coins **ran past the window**. The higher this share, the shorter the window is relative to him and the more exits are invisible — so the main table represents only his short-term slice"
+  },
+  "coins_missing_fills": 173,
+  "coins_without_creation_record": 1,
+  "selfcheck": "passed"
+ },
+ "not_visible": {
+  "total": 258,
+  "basis": "the rows below do not overlap; the total is their sum, subsets are folded into their parent. **Do not add them up yourself**",
+  "rows": [
+   "traded on a DEX we do not decode, not a single fill visible: 189",
+   "bought inside the window, not fully sold (sold after it): 33",
+   "already held before the window opened, cost unknown: 26 (of which 8: opening position was transferred in, not bought)",
+   "could not identify which coin it is: 10"
+  ]
+ },
+ "action_combos": {
+  "distinct_combos": 36,
+  "top10_coverage_pct": 85.3,
+  "rows": [
+   "inner→inner · buy 2-4 · sell 1 · hold <1m | 207 coins 35.4% | pnl +727 | won 109 lost 98 win 52.7%",
+   "inner→inner · buy 2-4 · sell 1 · hold 1-10m | 68 coins 11.6% | pnl +1079 | won 41 lost 27 win 60.3%",
+   "inner→inner · buy 1 · sell 1 · hold <1m | 59 coins 10.1% | pnl +904 | won 35 lost 24 win 59.3%",
+   "inner→inner · buy 5+ · sell 1 · hold 1-10m | 56 coins 9.6% | pnl +1534 | won 34 lost 22 win 60.7%",
+   "inner→inner · buy 5+ · sell 2-4 · hold 1-10m | 35 coins 6.0% | pnl +5348 | won 27 lost 8 win 77.1%",
+   "inner→outer · buy 5+ · sell 2-4 · hold 1-10m | 19 coins 3.2% | pnl +6052 | won 17 lost 2 win 89.5%",
+   "inner→inner · buy 5+ · sell 1 · hold <1m | 18 coins 3.1% | pnl +608 | won 11 lost 7 win 61.1%",
+   "inner→inner · buy 2-4 · sell 2-4 · hold <1m | 14 coins 2.4% | pnl +4611 | won 13 lost 1 win 92.9%",
+   "inner→inner · buy 5+ · sell 2-4 · hold 10-60m | 13 coins 2.2% | pnl +2178 | won 11 lost 2 win 84.6%",
+   "inner→outer · buy 5+ · sell 1 · hold 1-10m | 10 coins 1.7% | pnl -822 | won 4 lost 6 win 40.0%",
+   "(other 26 combos, none of them in the top 10) | 86 coins 14.7% | pnl +32053 | won 57 lost 29 win 66.3%"
+  ]
+ },
+ "buy_sell_ladder": {
+  "basis": "weighted by token amount; each coin's total buy volume is normalised to 1; the bucket is that fill's price move relative to **this coin's first buy price**",
+  "coins_included": 585,
+  "main_table_coins": 585,
+  "exclusion_note": "included are main-table coins for which a first buy price and a total bought amount are available; the difference is coins missing one of the two",
+  "sold_pct_of_bought": 99.1,
+  "rows": [
+   "down>50% | buy 0.2% | sell 4.6%",
+   "down30~50 | buy 0.7% | sell 5.3%",
+   "down20~30 | buy 0.4% | sell 4.3%",
+   "down10~20 | buy 0.6% | sell 8.3%",
+   "down0~10 | buy 0.6% | sell 10.2%",
+   "up0~10 | buy 89.6% | sell 12.3%",
+   "up10~20 | buy 0.7% | sell 13.3%",
+   "up20~30 | buy 1.0% | sell 6.2%",
+   "up30~50 | buy 2.0% | sell 11.3%",
+   "up50~100 | buy 2.3% | sell 12.2%",
+   "up100~200 | buy 1.3% | sell 7.5%",
+   "up>200% | buy 0.7% | sell 3.7%"
+  ]
+ },
+ "per_coin_buckets": {
+  "entry·time: seconds after coin creation": [
+   "<10s | 224 coins 38.3% | pnl +17736 | per coin +79 | win 67.4%",
+   "10-30s | 155 coins 26.5% | pnl +13396 | per coin +86 | win 56.8%",
+   "30-120s | 109 coins 18.6% | pnl +8520 | per coin +78 | win 58.7%",
+   ">120s | 96 coins 16.4% | pnl +10890 | per coin +113 | win 57.3%",
+   "(no value) | 1 coins 0.2% | pnl +3730 | per coin +3730 | win 100.0% | creation time unavailable (the pool is absent fr ×1"
+  ],
+  "entry·position: curve progress": [
+   "0~10% | 5 coins 0.9% | pnl +348 | per coin +69 | win 60.0%",
+   "10~20% | 21 coins 3.6% | pnl +5644 | per coin +268 | win 100.0%",
+   "20~30% | 42 coins 7.2% | pnl +5305 | per coin +126 | win 81.0%",
+   "30~40% | 56 coins 9.6% | pnl +10667 | per coin +190 | win 83.9%",
+   "40~50% | 85 coins 14.5% | pnl +6144 | per coin +72 | win 70.6%",
+   "50~60% | 82 coins 14.0% | pnl +6611 | per coin +80 | win 59.8%",
+   "60~70% | 104 coins 17.8% | pnl +11484 | per coin +110 | win 54.8%",
+   "70~80% | 84 coins 14.4% | pnl +2301 | per coin +27 | win 46.4%",
+   "80~90% | 67 coins 11.5% | pnl +3581 | per coin +53 | win 50.7%",
+   "≥90% | 22 coins 3.8% | pnl +1680 | per coin +76 | win 40.9%",
+   "(no value) | 17 coins 2.9% | pnl +508 | per coin +29 | win 35.3% | bought on the outer market, which has no curve - ×15; initial curve supply unavailable (the coin was c ×2"
+  ],
+  "entry·size: first buy USD": [
+   "<50 | 4 coins 0.7% | pnl +0 | per coin +0 | win 50.0%",
+   "50-150 | 1 coins 0.2% | pnl +83 | per coin +82 | win 100.0%",
+   "150-350 | 544 coins 93.0% | pnl +46878 | per coin +86 | win 61.4%",
+   "350-800 | 31 coins 5.3% | pnl +4197 | per coin +135 | win 58.1%",
+   ">800 | 5 coins 0.9% | pnl +3115 | per coin +622 | win 80.0%"
+  ],
+  "entry·size: total USD into this coin": [
+   "<100 | 4 coins 0.7% | pnl +0 | per coin +0 | win 50.0%",
+   "100-250 | 121 coins 20.7% | pnl +5227 | per coin +43 | win 73.6%",
+   "250-500 | 384 coins 65.6% | pnl +25627 | per coin +66 | win 56.8%",
+   "500-1k | 66 coins 11.3% | pnl +20070 | per coin +304 | win 66.7%",
+   ">1k | 10 coins 1.7% | pnl +3348 | per coin +334 | win 60.0%"
+  ],
+  "entry·style: number of buys": [
+   "1 | 66 coins 11.3% | pnl +1180 | per coin +17 | win 59.1%",
+   "2 | 152 coins 26.0% | pnl +2765 | per coin +18 | win 60.5%",
+   "3-4 | 169 coins 28.9% | pnl +4375 | per coin +25 | win 54.4%",
+   "5-10 | 149 coins 25.5% | pnl +21917 | per coin +147 | win 65.8%",
+   ">10 | 49 coins 8.4% | pnl +24035 | per coin +490 | win 77.6%"
+  ],
+  "entry·style: first buy as share of total": [
+   "<40% | 31 coins 5.3% | pnl +11531 | per coin +372 | win 71.0%",
+   "40-70% | 36 coins 6.2% | pnl +15038 | per coin +417 | win 75.0%",
+   "70-90% | 220 coins 37.6% | pnl +25270 | per coin +114 | win 70.0%",
+   ">90% | 298 coins 50.9% | pnl +2433 | per coin +8 | win 52.3%"
+  ],
+  "exit·time: seconds held": [
+   "≤15s | 100 coins 17.1% | pnl +2215 | per coin +22 | win 51.0%",
+   "15-60s | 226 coins 38.6% | pnl +11165 | per coin +49 | win 61.5%",
+   "1-5m | 182 coins 31.1% | pnl +12200 | per coin +67 | win 62.1%",
+   "5-60m | 70 coins 12.0% | pnl +24749 | per coin +353 | win 72.9%",
+   ">1h | 7 coins 1.2% | pnl +3943 | per coin +563 | win 71.4%"
+  ],
+  "exit·time: seconds after coin creation": [
+   "<1m | 247 coins 42.2% | pnl +8756 | per coin +35 | win 57.9%",
+   "1-10m | 266 coins 45.5% | pnl +17622 | per coin +66 | win 65.0%",
+   "10-60m | 57 coins 9.7% | pnl +20257 | per coin +355 | win 59.6%",
+   ">1h | 14 coins 2.4% | pnl +3908 | per coin +279 | win 57.1%",
+   "(no value) | 1 coins 0.2% | pnl +3730 | per coin +3730 | win 100.0%"
+  ],
+  "exit·position: curve progress": [
+   "0~10% | 6 coins 1.0% | pnl +149 | per coin +24 | win 33.3%",
+   "10~20% | 15 coins 2.6% | pnl -318 | per coin -21 | win 40.0%",
+   "20~30% | 25 coins 4.3% | pnl -90 | per coin -3 | win 56.0%",
+   "30~40% | 54 coins 9.2% | pnl -275 | per coin -5 | win 53.7%",
+   "40~50% | 77 coins 13.2% | pnl +3561 | per coin +46 | win 67.5%",
+   "50~60% | 95 coins 16.2% | pnl +2987 | per coin +31 | win 57.9%",
+   "60~70% | 93 coins 15.9% | pnl +4270 | per coin +45 | win 61.3%",
+   "70~80% | 71 coins 12.1% | pnl +6063 | per coin +85 | win 60.6%",
+   "80~90% | 46 coins 7.9% | pnl +4482 | per coin +97 | win 60.9%",
+   "≥90% | 10 coins 1.7% | pnl +2679 | per coin +267 | win 100.0%",
+   "(no value) | 93 coins 15.9% | pnl +30765 | per coin +330 | win 67.7% | sold on the outer market, which has no curve - n ×91; initial curve supply unavailable (the coin was c ×2"
+  ],
+  "exit·size: leftover as share of bought": [
+   "<1% | 456 coins 77.9% | pnl +46436 | per coin +101 | win 62.9%",
+   "1-5% | 97 coins 16.6% | pnl +7450 | per coin +76 | win 57.7%",
+   "5-10% | 29 coins 5.0% | pnl +356 | per coin +12 | win 51.7%",
+   ">10% | 3 coins 0.5% | pnl +31 | per coin +10 | win 33.3%"
+  ],
+  "exit·style: number of sells": [
+   "1 | 451 coins 77.1% | pnl +2429 | per coin +5 | win 55.0%",
+   "2 | 84 coins 14.4% | pnl +17606 | per coin +209 | win 82.1%",
+   "3-4 | 31 coins 5.3% | pnl +13233 | per coin +426 | win 87.1%",
+   "5-10 | 15 coins 2.6% | pnl +12449 | per coin +829 | win 73.3%",
+   ">10 | 4 coins 0.7% | pnl +8555 | per coin +2138 | win 100.0%"
+  ],
+  "fills on this coin": [
+   "2 | 64 coins 10.9% | pnl +520 | per coin +8 | win 57.8%",
+   "3-4 | 243 coins 41.5% | pnl +3407 | per coin +14 | win 56.4%",
+   "5-10 | 193 coins 33.0% | pnl +17161 | per coin +88 | win 62.7%",
+   ">10 | 85 coins 14.5% | pnl +33184 | per coin +390 | win 75.3%"
+  ],
+  "entry→exit venue": [
+   "inner→inner | 494 coins 84.4% | pnl +23372 | per coin +47 | win 59.9%",
+   "inner→outer | 76 coins 13.0% | pnl +30257 | per coin +398 | win 75.0%",
+   "outer→outer | 15 coins 2.6% | pnl +644 | per coin +42 | win 40.0%"
+  ]
+ },
+ "per_fill_distribution": {
+  "basis": "every fill of this address poured together and counted. Sizes are in the **quote token's own units**, not USD (USD would smear repeated values by price drift)",
+  "buy_size": {
+   "sample": 2970,
+   "distinct_values": 1221,
+   "top_share_pct": 54.4,
+   "most_common": [
+    "0.0244444 ×760 (25.6%)",
+    "0.244444 ×411 (13.8%)",
+    "2.93333 ×203 (6.8%)",
+    "0.0244565 ×109 (3.7%)",
+    "1.95556 ×77 (2.6%)",
+    "0.244565 ×55 (1.9%)"
+   ]
+  },
+  "sell_size": {
+   "sample": 934,
+   "distinct_values": 933,
+   "top_share_pct": 0.7,
+   "most_common": [
+    "1.95736 ×2 (0.2%)",
+    "21.3795 ×1 (0.1%)",
+    "3759.5 ×1 (0.1%)",
+    "3.54773 ×1 (0.1%)",
+    "2.41433 ×1 (0.1%)",
+    "0.00270603 ×1 (0.1%)"
+   ]
+  },
+  "gap_between_buys_sec": {
+   "sample": 2313,
+   "distinct_values": 182,
+   "top_share_pct": 19.8,
+   "most_common": [
+    "0 ×105 (4.5%)",
+    "3 ×75 (3.2%)",
+    "5 ×70 (3.0%)",
+    "7 ×70 (3.0%)",
+    "4 ×69 (3.0%)",
+    "11 ×68 (2.9%)"
+   ]
+  },
+  "fills_by_utc_hour": {
+   "total_fills": 4007,
+   "hours_with_fills": "00h:12 01h:71 02h:102 03h:184 04h:111 13h:97 14h:313 15h:386 16h:394 17h:386 18h:376 19h:388 20h:450 21h:377 22h:275 23h:85",
+   "hours_with_no_fills": "05-12"
+  }
+ },
+ "coin_attributes": {
+  "by_launchpad": {
+   "launchlab": 145,
+   "pumpfun": 437,
+   "dbc": 3
+  },
+  "graduated": 126,
+  "bought_pre_graduation": 570,
+  "bought_post_graduation": 15,
+  "time_to_graduate": [
+   "<60s: 33",
+   "1-10m: 60",
+   ">10m: 32"
+  ],
+  "coins_with_incoming_transfer": 170,
+  "coins_opened_by_transfer": 0
+ },
+ "pnl_distribution": {
+  "basis": "per-coin PnL sorted and accumulated. **Bookkeeping only, and both tails are listed**: looking at the winning tail alone hides losses concentrated in a few coins",
+  "winners_side": {
+   "coins": 359,
+   "total": 73183,
+   "cumulative": [
+    "top1 | +3730 | 5.1% of this side",
+    "top3 | +9314 | 12.7% of this side",
+    "top5 | +14227 | 19.4% of this side",
+    "top10 | +22079 | 30.2% of this side",
+    "top20 | +30805 | 42.1% of this side",
+    "top50 | +45031 | 61.5% of this side"
+   ]
+  },
+  "losers_side": {
+   "coins": 226,
+   "total": -18911,
+   "cumulative": [
+    "top1 | -505 | 2.7% of this side",
+    "top3 | -1378 | 7.3% of this side",
+    "top5 | -2096 | 11.1% of this side",
+    "top10 | -3715 | 19.6% of this side",
+    "top20 | -6341 | 33.5% of this side",
+    "top50 | -11132 | 58.9% of this side"
+   ]
+  },
+  "win_rate_pct": 61.4,
+  "win_rate_denominator": "these 585 coins we can see. He also trades on DEXes we do not decode, with no fill-level detail at all; those are not in the denominator",
+  "net": 54273,
+  "best_coin": {
+   "symbol": null,
+   "token": "CvegBNDMn69RfvXgM6rEVKbuoeWP7pGHjUD6bsGDSwPd",
+   "pnl": 3730
+  },
+  "worst_coin": {
+   "symbol": "drill",
+   "token": "7KdcxYRKyrzaYEnqDx5ygxTEU9EpZweL4nPYkzfi6mu4",
+   "pnl": -505
+  }
+ },
+ "by_period": {
+  "basis": "segmented by the date of **this coin's first buy**. Per segment: coins / winners / win rate / net PnL",
+  "periods": 5,
+  "rows": [
+   "2026-09-14 | 103 coins | winners 67 | win 65.0% | net pnl +11329",
+   "2026-09-15 | 115 coins | winners 69 | win 60.0% | net pnl +10098",
+   "2026-09-16 | 136 coins | winners 83 | win 61.0% | net pnl +12015",
+   "2026-09-17 | 135 coins | winners 78 | win 57.8% | net pnl +12623",
+   "2026-09-18 | 96 coins | winners 62 | win 64.6% | net pnl +8206"
+  ]
+ },
+ "sample_coins": {
+  "selection": "covers the **3 combos with the most coins** + the **2 with the highest total PnL** + the **1 with the lowest** (deduplicated); for each combo the coin that contributed most to that combo's PnL, plus the group's spread. Not 'the middle one': in a long-tailed distribution the middle coin represents nothing",
+  "samples": [
+   {
+    "combo": "inner→inner · buy 2-4 · sell 1 · hold <1m",
+    "group_spread": {
+     "coins": 207,
+     "total_pnl": 727,
+     "winners": 109,
+     "losers": 98,
+     "best": 355,
+     "worst": -229,
+     "top3_pnl": 900
+    },
+    "coin": {
+     "symbol": "nobrainer",
+     "token": "7DBmCjxv4WGNGF8ZDT7CcFDHa5GN3f8QAe7WxuRGpump",
+     "road": "pumpfun",
+     "created_at": "2026-09-14 22:23:58.000 UTC",
+     "graduated": true,
+     "coin_age_at_entry_sec": 5,
+     "hold_seconds": 50,
+     "entry_progress": 0.6048,
+     "exit_progress": 0.8645,
+     "usd_spent": 254.56,
+     "usd_got": 620.04,
+     "fees_usd": 10.9325,
+     "pnl_usd": 354.56,
+     "roi_pct": 139.28
+    },
+    "fills": [
+     "22:24:03 buy inner progress 60% | 1.95556 ($201.63) | vs first buy +0.0%",
+     "22:24:12 buy inner progress 71% | 0.244444 ($25.20) | vs first buy +40.8%",
+     "22:24:26 buy inner progress 72% | 0.244444 ($25.20) | vs first buy +45.4%",
+     "22:24:44 buy inner progress 94% | 0.0244444 ($2.52) | vs first buy +233.5%",
+     "22:24:53 sell inner progress 86% | 6.01364 ($620.04) | vs first buy +160.9%"
+    ]
+   },
+   {
+    "combo": "inner→inner · buy 2-4 · sell 1 · hold 1-10m",
+    "group_spread": {
+     "coins": 68,
+     "total_pnl": 1079,
+     "winners": 41,
+     "losers": 27,
+     "best": 323,
+     "worst": -153,
+     "top3_pnl": 714
+    },
+    "coin": {
+     "symbol": "jon",
+     "token": "2Vdq7k8v1Ns4crSqA5vw7QMFAZTHmHHJi58sYuegpump",
+     "road": "pumpfun",
+     "created_at": "2026-09-16 21:46:14.000 UTC",
+     "graduated": false,
+     "coin_age_at_entry_sec": 45,
+     "hold_seconds": 60,
+     "entry_progress": 0.767,
+     "exit_progress": 0.9292,
+     "usd_spent": 317.18,
+     "usd_got": 652.12,
+     "fees_usd": 12.1161,
+     "pnl_usd": 322.82,
+     "roi_pct": 101.78
+    },
+    "fills": [
+     "21:46:59 buy inner progress 77% | 2.93333 ($288.34) | vs first buy +0.0%",
+     "21:47:08 buy inner progress 89% | 0.244444 ($24.03) | vs first buy +66.4%",
+     "21:47:26 buy inner progress 86% | 0.0244444 ($2.40) | vs first buy +48.5%",
+     "21:47:51 buy inner progress 97% | 0.0244444 ($2.40) | vs first buy +138.6%",
+     "21:47:59 sell inner progress 93% | 6.63407 ($652.12) | vs first buy +113.5%"
+    ]
+   },
+   {
+    "combo": "inner→inner · buy 1 · sell 1 · hold <1m",
+    "group_spread": {
+     "coins": 59,
+     "total_pnl": 904,
+     "winners": 35,
+     "losers": 24,
+     "best": 320,
+     "worst": -215,
+     "top3_pnl": 781
+    },
+    "coin": {
+     "symbol": "FLY",
+     "token": "AumXb71MHTLtkubt6r5KY1WLrmGuXn1ZCfVjMsi3Wy5o",
+     "road": "launchlab",
+     "created_at": "2026-09-15 15:13:40.000 UTC",
+     "graduated": false,
+     "coin_age_at_entry_sec": 9,
+     "hold_seconds": 22,
+     "entry_progress": 0.2322,
+     "exit_progress": 0.3564,
+     "usd_spent": 855.22,
+     "usd_got": 1175.41,
+     "fees_usd": 0.0,
+     "pnl_usd": 320.19,
+     "roi_pct": 37.44
+    },
+    "fills": [
+     "15:13:49 buy inner progress 23% | 8.52517 ($855.22) | vs first buy +0.0%",
+     "15:14:11 sell inner progress 36% | 11.7169 ($1175.41) | vs first buy +46.1%"
+    ]
+   },
+   {
+    "combo": "inner→outer · buy 5+ · sell 2-4 · hold 1-10m",
+    "group_spread": {
+     "coins": 19,
+     "total_pnl": 6052,
+     "winners": 17,
+     "losers": 2,
+     "best": 744,
+     "worst": -373,
+     "top3_pnl": 2063
+    },
+    "coin": {
+     "symbol": "Michael",
+     "token": "HSqVfmcC2e8HkFv1bmbaDVBTfdQ3ooz2noNWBtLPJ4Ei",
+     "road": "pumpfun",
+     "created_at": "2026-09-16 14:51:11.000 UTC",
+     "graduated": true,
+     "coin_age_at_entry_sec": 8,
+     "hold_seconds": 559,
+     "entry_progress": 0.627,
+     "exit_progress": null,
+     "usd_spent": 326.8,
+     "usd_got": 1074.21,
+     "fees_usd": 3.6703,
+     "pnl_usd": 743.74,
+     "roi_pct": 227.58
+    },
+    "fills": [
+     "14:51:19 buy inner progress 63% | 1.95556 ($189.44) | vs first buy +0.0%",
+     "14:51:22 buy inner progress 74% | 0.244444 ($23.68) | vs first buy +44.9%",
+     "14:51:32 buy inner progress 80% | 0.0244444 ($2.37) | vs first buy +75.6%",
+     "14:51:50 buy inner progress 80% | 0.244444 ($23.68) | vs first buy +74.9%",
+     "14:52:20 buy inner progress 88% | 0.0244444 ($2.37) | vs first buy +141.4%",
+     "14:52:58 buy inner progress 84% | 0.244444 ($23.68) | vs first buy +106.5%",
+     "14:53:46 buy inner progress 83% | 0.0244444 ($2.37) | vs first buy +98.6%",
+     "14:55:02 buy inner progress 89% | 0.0244444 ($2.37) | vs first buy +153.2%",
+     "14:55:46 buy inner progress 95% | 0.244444 ($23.68) | vs first buy +239.7%",
+     "14:56:52 buy outer progress — | 0.0244565 ($2.37) | vs first buy +359.7%",
+     "14:58:21 buy outer progress — | 0.0244565 ($2.37) | vs first buy +440.2%",
+     "14:58:21 buy outer progress — | 0.0244565 ($2.37) | vs first buy +417.2%",
+     "14:59:03 buy outer progress — | 0.244565 ($23.69) | vs first buy +363.2%",
+     "15:00:27 sell outer progress — | 4.02773 ($390.93) | vs first buy +376.3%",
+     "15:00:29 buy outer progress — | 0.0244444 ($2.37) | vs first buy +338.4%",
+     "15:00:32 sell outer progress — | 4.4246 ($429.45) | vs first buy +328.1%",
+     "15:00:38 sell outer progress — | 2.61529 ($253.84) | vs first buy +279.6%"
+    ]
+   },
+   {
+    "combo": "inner→outer · buy 5+ · sell 1 · hold 1-10m",
+    "group_spread": {
+     "coins": 10,
+     "total_pnl": -822,
+     "winners": 4,
+     "losers": 6,
+     "best": 207,
+     "worst": -463,
+     "top3_pnl": 437
+    },
+    "coin": {
+     "symbol": "solami",
+     "token": "ActQbUBLuiwEUvzQs5PgRSXx8GXJ8VdUCWn6jWgbD18S",
+     "road": "pumpfun",
+     "created_at": "2026-09-17 19:23:47.000 UTC",
+     "graduated": true,
+     "coin_age_at_entry_sec": 127,
+     "hold_seconds": 167,
+     "entry_progress": 0.6286,
+     "exit_progress": null,
+     "usd_spent": 354.85,
+     "usd_got": 565.43,
+     "fees_usd": 4.066,
+     "pnl_usd": 206.51,
+     "roi_pct": 58.2
+    },
+    "fills": [
+     "19:25:54 buy inner progress 63% | 2.93333 ($295.71) | vs first buy +0.0%",
+     "19:26:44 buy inner progress 74% | 0.0244444 ($2.46) | vs first buy +45.7%",
+     "19:27:23 buy inner progress 81% | 0.244444 ($24.64) | vs first buy +89.7%",
+     "19:27:44 buy inner progress 92% | 0.0244444 ($2.46) | vs first buy +202.0%",
+     "19:28:06 buy outer progress — | 0.0244444 ($2.46) | vs first buy +175.2%",
+     "19:28:12 buy outer progress — | 0.244444 ($24.64) | vs first buy +149.7%",
+     "19:28:28 buy outer progress — | 0.0244444 ($2.46) | vs first buy +169.0%",
+     "19:28:41 sell outer progress — | 5.60889 ($565.43) | vs first buy +75.1%"
+    ]
+   }
+  ]
+ },
+ "not_in_this_layer": [
+  "what he saw when he placed the order (other coins / social media / the market) — not on chain",
+  "why he picked these coins — not on chain",
+  "his trades on DEXes we do not decode — see `not_visible`",
+  "what he did from other addresses — this layer reads one address only",
+  "fills outside the window — see store.py's window_edge[] and unclosed[]"
+ ]
+}

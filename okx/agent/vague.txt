@@ -1,0 +1,33 @@
+# Vague quantifiers — scanned across facts and all three body sections (check 8).
+#
+# Why this list exists: rewriting "207 coins" as "most coins" leaves nothing to check, which is
+# the front door around check 3. Either give the number layer 3 prints, or say nothing.
+#
+# `re:` lines are regular expressions (case-insensitive); other lines are plain words.
+
+# ── bare quantifiers ──
+# 'most' preceded by 'the' is a superlative, not a quantifier: "the most common buy size" is a
+# layer-3 field name and "the combo with the most coins" is a ranking — both are correct writing.
+# Only a bare "most coins are ..." is the vague one. Both false positives were measured 2026-09-22.
+re:(?<!the )\bmost\b
+majority
+few
+several
+numerous
+countless
+re:\ba (handful|bunch|couple) of\b
+re:\balmost all\b
+re:\bnearly all\b
+re:\bthe vast majority\b
+re:\bmany (of the )?(coins|fills|trades|buys|sells)\b
+re:\bsome (of the )?(coins|fills|trades|buys|sells)\b
+
+# ── approximations: a number that is not the printed number ──
+re:\b(roughly|approximately|about|around|nearly|almost|circa)\s+\d
+re:\bclose to\s+\d
+re:\bor so\b
+# NOTE: a '0~10' style token is a bucket label, not an approximation — merged ranges are caught by
+# check 5 (the range checker), not here.
+re:\d+\s*\+\s*(usd|dollars|coins|fills|%)
+re:\b(over|under|more than|less than|at least|at most)\s+\d
+re:\bin the (region|ballpark) of\b
